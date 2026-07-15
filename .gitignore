@@ -1,0 +1,25 @@
+# General
+.env
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# Go (Gateway)
+gateway/hotel-gateway
+gateway/*.exe
+gateway/hotel.db
+gateway/hotel.db-journal
+
+# Python (Brain)
+brain/.venv/
+brain/__pycache__/
+brain/*.pyc
+brain/.pytest_cache/
+brain/faiss_index/
+
+# Frontend UI
+ui/node_modules/
+ui/dist/
+ui/.svelte-kit/
