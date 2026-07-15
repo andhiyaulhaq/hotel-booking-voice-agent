@@ -1,0 +1,29 @@
+# The Grand AI Hotel - Policies & Knowledge Base
+
+## Check-In and Check-Out
+- Check-in time is 3:00 PM.
+- Check-out time is 11:00 AM.
+- Late check-out up to 2:00 PM is available for an additional fee of $50, subject to availability.
+- Guests must provide a valid government-issued ID and a credit card for incidentals at check-in.
+
+## Pet Policy
+- We are a pet-friendly hotel!
+- A maximum of two pets (dogs or cats only) are allowed per room.
+- There is a non-refundable pet fee of $75 per stay.
+- Pets must be kept on a leash in public areas and are not allowed in the pool or spa areas.
+
+## Parking
+- Valet parking is available for $45 per night.
+- Self-parking is available in the adjacent garage for $25 per night.
+- EV charging stations are complimentary for guests using valet parking.
+
+## Amenities
+- The fitness center is open 24/7 on the 3rd floor.
+- The rooftop pool is open from 6:00 AM to 10:00 PM daily.
+- Complimentary high-speed Wi-Fi is available in all rooms and public areas.
+- Breakfast is served from 6:30 AM to 10:30 AM in the Grand Dining Room (not included in standard room rate unless specified).
+
+## Local Recommendations (Concierge)
+- **Seafood:** The Ocean Grille is a 5-minute walk from the hotel and is highly recommended.
+- **Museums:** The Natural History Museum is located 2 miles away, accessible via the metro station across the street.
+- **Coffee:** Bean & Leaf Cafe is right next door, opening at 5:30 AM.

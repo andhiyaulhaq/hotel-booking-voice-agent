@@ -31,3 +31,21 @@ message CheckoutResponse {
   string invoice_id = 2;
   string error_message = 3;
 }
+
+// -----------------------------------------------------------------
+// Agent Service (Implemented by Python, Called by Go)
+// -----------------------------------------------------------------
+service AgentService {
+  // Streams agent responses back to Go as they are generated
+  rpc ProcessTranscript (TranscriptRequest) returns (stream AgentResponse);
+}
+
+message TranscriptRequest {
+  string session_id = 1;
+  string transcript = 2;
+}
+
+message AgentResponse {
+  string text_chunk = 1;
+  bool is_done = 2;
+}
