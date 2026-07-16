@@ -1,11 +1,16 @@
 package ws
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"fmt"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/hotel-voice-agent/gateway/internal/cartesia"
+	grpcserver "github.com/hotel-voice-agent/gateway/internal/grpc"
 )
 
 var upgrader = websocket.Upgrader{
@@ -20,8 +25,17 @@ type ClientMessage struct {
 	URL  string `json:"url,omitempty"`
 }
 
+// WebSocketHandler struct to inject dependencies
+type WebSocketHandler struct {
+	AgentClient *grpcserver.AgentClient
+}
+
+func NewWebSocketHandler(agentClient *grpcserver.AgentClient) *WebSocketHandler {
+	return &WebSocketHandler{AgentClient: agentClient}
+}
+
 // HandleConnections upgrades the HTTP connection and routes audio/events
-func HandleConnections(w http.ResponseWriter, r *http.Request) {
+func (wh *WebSocketHandler) HandleConnections(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket Upgrade Error: %v", err)
@@ -29,15 +43,21 @@ func HandleConnections(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 
-	// Initialize Cartesia Clients (assuming keys are set)
-	stt, err := cartesia.NewSTTClient("mock-key")
+	cartesiaKey := os.Getenv("CARTESIA_API_KEY")
+	if cartesiaKey == "" {
+		log.Println("Warning: CARTESIA_API_KEY not set. Audio streaming will fail.")
+	}
+
+	// Initialize Cartesia Clients
+	stt, err := cartesia.NewSTTClient(cartesiaKey)
 	if err != nil {
 		log.Printf("Cartesia STT init error: %v", err)
 		return
 	}
 	defer stt.Close()
 
-	tts, err := cartesia.NewTTSClient("mock-key", "voice-id-here")
+	// Default voice ID for the concierge.
+	tts, err := cartesia.NewTTSClient(cartesiaKey, "79a125e8-cd45-4c13-8a67-188112f4dd22")
 	if err != nil {
 		log.Printf("Cartesia TTS init error: %v", err)
 		return
@@ -55,14 +75,24 @@ func HandleConnections(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	// Unique session ID for this WS connection
+	sessionID := fmt.Sprintf("session-%d", time.Now().UnixNano())
+
 	// Goroutine to send STT transcripts to Python Brain
 	go func() {
 		for transcript := range stt.Transcript {
 			log.Printf("Final Transcript: %s", transcript)
-			// TODO: Send to Python via gRPC
 			
-			// Mock: Send text directly to TTS for echo
-			tts.SendText(transcript)
+			// Stream text back to Cartesia TTS
+			chunkHandler := func(chunk string) {
+				tts.SendText(chunk)
+			}
+			
+			// Call the Python Brain via gRPC
+			err := wh.AgentClient.StreamTranscript(context.Background(), sessionID, transcript, chunkHandler)
+			if err != nil {
+				log.Printf("Error streaming transcript to python brain: %v", err)
+			}
 		}
 	}()
 

@@ -12,9 +12,15 @@ import (
 	grpcserver "github.com/hotel-voice-agent/gateway/internal/grpc"
 	"github.com/hotel-voice-agent/gateway/internal/payments"
 	"github.com/hotel-voice-agent/gateway/internal/ws"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found or error loading it. Using environment variables.")
+	}
+
 	log.Println("Starting Hotel Voice Agent Gateway...")
 
 	// 1. Initialize SQLite Database
@@ -43,8 +49,18 @@ func main() {
 	// 4. Initialize Xendit
 	payments.InitXendit()
 
-	// 5. Start HTTP Server for WebSockets and Webhooks
-	http.HandleFunc("/ws", ws.HandleConnections)
+	// 5. Initialize Python Brain Client
+	agentClient, err := grpcserver.NewAgentClient("localhost:50052")
+	if err != nil {
+		log.Fatalf("Failed to initialize Agent Client: %v", err)
+	}
+	defer agentClient.Close()
+
+	// 6. Initialize WebSocket Handler
+	wsHandler := ws.NewWebSocketHandler(agentClient)
+
+	// 7. Start HTTP Server for WebSockets and Webhooks
+	http.HandleFunc("/ws", wsHandler.HandleConnections)
 	http.HandleFunc("/webhooks/xendit", payments.HandleWebhook(repo))
 	
 	go func() {
