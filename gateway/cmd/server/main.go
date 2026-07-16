@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -9,6 +10,8 @@ import (
 	"github.com/hotel-voice-agent/gateway/internal/cache"
 	"github.com/hotel-voice-agent/gateway/internal/db"
 	grpcserver "github.com/hotel-voice-agent/gateway/internal/grpc"
+	"github.com/hotel-voice-agent/gateway/internal/payments"
+	"github.com/hotel-voice-agent/gateway/internal/ws"
 )
 
 func main() {
@@ -37,7 +40,21 @@ func main() {
 		}
 	}()
 
-	// 4. Wait for interrupt signal to gracefully shutdown the server
+	// 4. Initialize Xendit
+	payments.InitXendit()
+
+	// 5. Start HTTP Server for WebSockets and Webhooks
+	http.HandleFunc("/ws", ws.HandleConnections)
+	http.HandleFunc("/webhooks/xendit", payments.HandleWebhook(repo))
+	
+	go func() {
+		log.Println("HTTP Server listening on :8080 (WebSockets & Webhooks)")
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			log.Fatalf("HTTP server failed: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

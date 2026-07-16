@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
 # We'll use a local directory to store/load the FAISS index
@@ -14,7 +14,7 @@ def get_retriever():
     Initializes and returns a FAISS retriever for the hotel policies.
     If the index doesn't exist on disk, it reads the text file, embeds it, and saves the index.
     """
-    embeddings = OpenAIEmbeddings()
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     
     if INDEX_DIR.exists():
         # Load existing index

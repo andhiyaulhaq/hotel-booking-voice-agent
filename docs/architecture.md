@@ -27,14 +27,14 @@ flowchart TD
 
     subgraph External APIs
         Cartesia[Cartesia STT / TTS]
-        OpenAI[LLM Provider]
+        NineRouter[9router LLM Gateway]
         Xendit[Xendit Payment Gateway]
     end
 
     Client <-->|Audio / JSON| WS
     WS <-->|Audio Streaming| Cartesia
     WS <-->|Text/Events via gRPC| Agent
-    Agent <-->|LLM Inference| OpenAI
+    Agent <-->|LLM Inference| NineRouter
     Agent -->|Tool Calls via gRPC| State
     Agent <-->|Semantic Search| VectorDB
     State <-->|Webhook / API| Xendit
@@ -56,7 +56,7 @@ flowchart TD
 - Process text transcripts using LangChain/LangGraph.
 - Maintain conversational flow (system prompts).
 - Execute Tool calls (e.g., checking room availability).
-- **RAG (Retrieval-Augmented Generation):** Query a Vector Database (like Qdrant, Chroma, or pgvector) to retrieve semantic context about hotel policies, amenities, or local tourist spots.
+- **RAG (Retrieval-Augmented Generation):** Generates vector embeddings entirely locally using HuggingFace models (e.g., all-MiniLM) and queries a FAISS Vector Database to retrieve semantic context about hotel policies, amenities, or local tourist spots.
 - **Statelessness:** When a booking tool is triggered, Python acts as a gRPC client and sends an RPC request to the Go service to perform the database transaction.
 
 ### C. Web Frontend (The Interfaces)

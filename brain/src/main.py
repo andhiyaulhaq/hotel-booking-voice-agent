@@ -32,40 +32,26 @@ class AgentServiceServicer(service_pb2_grpc.AgentServiceServicer):
         
         # We stream the messages from the LangChain agent
         try:
-            stream = self.agent.astream(
+            stream = self.agent.stream(
                 {"messages": [HumanMessage(content=request.transcript)]},
                 config,
                 stream_mode="messages"
             )
             
-            import asyncio
-            
-            # Helper to run the async generator in sync gRPC method
-            async def process_stream():
-                async for message, metadata in stream:
-                    if hasattr(message, 'content') and isinstance(message.content, str) and message.content:
-                        # Stream text chunks back to Go
-                        yield service_pb2.AgentResponse(
-                            text_chunk=message.content,
-                            is_done=False
-                        )
-            
-            # Run the async generator
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            async def run_gen():
-                async for response in process_stream():
-                    context.write(response)
+            for message, metadata in stream:
+                if hasattr(message, 'content') and isinstance(message.content, str) and message.content:
+                    # Stream text chunks back to Go
+                    yield service_pb2.AgentResponse(
+                        text_chunk=message.content,
+                        is_done=False
+                    )
                     
-            loop.run_until_complete(run_gen())
-            
         except Exception as e:
             logger.error(f"Error processing transcript: {e}")
-            context.write(service_pb2.AgentResponse(
+            yield service_pb2.AgentResponse(
                 text_chunk="I'm sorry, I encountered an internal error processing that request.",
                 is_done=False
-            ))
+            )
             
         # Signal completion
         yield service_pb2.AgentResponse(

@@ -31,8 +31,10 @@ Agent: "Perfect, John. I've reserved the suite. A secure QRIS code has just appe
 def create_concierge_agent():
     # We use a fast model suitable for voice interactions
     llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0.3
+        model="free-combo",
+        temperature=0.3,
+        base_url="http://localhost:20128/v1",
+        api_key=os.getenv("NINEROUTER_API_KEY", "dummy-key")
     )
     
     # Bind the LLM with our gRPC and RAG tools
@@ -43,7 +45,7 @@ def create_concierge_agent():
         model=llm,
         tools=TOOLS,
         checkpointer=memory,
-        state_modifier=SYSTEM_PROMPT
+        prompt=SYSTEM_PROMPT
     )
     
     return agent_executor
