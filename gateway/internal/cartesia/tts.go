@@ -4,46 +4,36 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/url"
 
 	"github.com/gorilla/websocket"
 )
 
 // TTSClient handles the WebSocket connection to Cartesia TTS
 type TTSClient struct {
-	conn   *websocket.Conn
-	Audio  chan []byte
-	apiKey string
+	conn    *websocket.Conn
+	Audio   chan []byte
+	apiKey  string
+	voiceID string
 }
 
 // NewTTSClient initializes a new Cartesia TTS connection
 func NewTTSClient(apiKey, voiceID string) (*TTSClient, error) {
-	url := fmt.Sprintf("wss://api.cartesia.ai/v1/tts/websocket?api_key=%s", apiKey)
-	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	params := url.Values{}
+	params.Add("api_key", apiKey)
+	params.Add("cartesia_version", "2024-03-01") // Or 2025-04-16
+
+	wsUrl := fmt.Sprintf("wss://api.cartesia.ai/tts/websocket?%s", params.Encode())
+	conn, _, err := websocket.DefaultDialer.Dial(wsUrl, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Cartesia TTS: %w", err)
 	}
 
 	client := &TTSClient{
-		conn:   conn,
-		Audio:  make(chan []byte),
-		apiKey: apiKey,
-	}
-
-	// Initialize the TTS context with the voice ID
-	initMsg := map[string]interface{}{
-		"model_id": "sonic-english",
-		"voice": map[string]string{
-			"mode": "id",
-			"id":   voiceID,
-		},
-		"output_format": map[string]interface{}{
-			"container":   "raw",
-			"encoding":    "pcm_s16le",
-			"sample_rate": 16000,
-		},
-	}
-	if err := conn.WriteJSON(initMsg); err != nil {
-		return nil, fmt.Errorf("failed to init TTS: %w", err)
+		conn:    conn,
+		Audio:   make(chan []byte),
+		apiKey:  apiKey,
+		voiceID: voiceID,
 	}
 
 	go client.listen()
@@ -62,20 +52,38 @@ func (c *TTSClient) listen() {
 
 		var payload map[string]interface{}
 		if err := json.Unmarshal(message, &payload); err == nil {
-			// Extract base64 audio and send to channel
-			if typ, ok := payload["type"].(string); ok && typ == "chunk" {
-				if data, ok := payload["data"].(string); ok {
-					// We'll pass the base64 string downstream as bytes
-					c.Audio <- []byte(data)
-				}
+			// Cartesia sends chunk data in the "data" field (base64)
+			if data, ok := payload["data"].(string); ok && data != "" {
+				c.Audio <- []byte(data)
+			}
+			if errStr, ok := payload["error"].(string); ok && errStr != "" {
+				log.Printf("Cartesia TTS Error from server: %s", errStr)
 			}
 		}
 	}
 }
 
 func (c *TTSClient) SendText(text string) error {
+	if text == "" {
+		return nil
+	}
+
+	// Use the same context ID for the duration of this client connection to prevent concurrency limits
+	contextID := "ctx_hotel_concierge_" + c.voiceID
+
 	payload := map[string]interface{}{
+		"model_id":   "sonic-3",
 		"transcript": text,
+		"voice": map[string]string{
+			"mode": "id",
+			"id":   c.voiceID,
+		},
+		"output_format": map[string]interface{}{
+			"container":   "raw",
+			"encoding":    "pcm_s16le",
+			"sample_rate": 16000,
+		},
+		"context_id": contextID,
 		"continue":   true,
 	}
 	return c.conn.WriteJSON(payload)

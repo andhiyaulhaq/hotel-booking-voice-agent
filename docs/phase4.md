@@ -11,17 +11,17 @@ This phase creates the React frontend in the `web/` directory:
 web/
 ├── index.html
 ├── src/
-│   ├── main.jsx              # Vite + React entry point
-│   ├── App.jsx               # React Router (Guest vs Admin routes)
+│   ├── main.tsx              # Vite + React entry point
+│   ├── App.tsx               # React Router (Guest vs Admin routes)
 │   ├── pages/
-│   │   ├── GuestPortal.jsx   # Main booking UI
-│   │   └── AdminDashboard.jsx# Real-time ledger
+│   │   ├── GuestPortal.tsx   # Main booking UI
+│   │   └── AdminDashboard.tsx# Real-time ledger
 │   ├── components/
-│   │   ├── VoiceOverlay.jsx  # Floating mic & visualizer
-│   │   └── CheckoutModal.jsx # Xendit QRIS modal
+│   │   ├── VoiceOverlay.tsx  # Floating mic & visualizer
+│   │   └── CheckoutModal.tsx # Xendit QRIS modal
 │   ├── hooks/
-│   │   ├── useAudioStream.js # WebAudio API logic
-│   │   └── useWebSocket.js   # Go Gateway connection
+│   │   ├── useAudioStream.ts # WebAudio API logic
+│   │   └── useWebSocket.ts   # Go Gateway connection
 │   └── styles/
 │       └── index.css         # Vanilla CSS Glassmorphism tokens
 ```
@@ -29,7 +29,7 @@ web/
 ## 2. Project Initialization
 ```bash
 # From the project root
-pnpm create vite web --template react
+pnpm create vite web --template react-ts
 cd web
 pnpm add react-router-dom
 ```

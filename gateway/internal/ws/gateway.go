@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"encoding/base64"
 	"log"
 	"net/http"
 	"os"
@@ -81,10 +82,13 @@ func (wh *WebSocketHandler) HandleConnections(w http.ResponseWriter, r *http.Req
 	// Goroutine to send STT transcripts to Python Brain
 	go func() {
 		for transcript := range stt.Transcript {
-			log.Printf("Final Transcript: %s", transcript)
+			log.Printf("Guest: %s", transcript)
+			
+			var aiResponse string
 			
 			// Stream text back to Cartesia TTS
 			chunkHandler := func(chunk string) {
+				aiResponse += chunk
 				tts.SendText(chunk)
 			}
 			
@@ -93,6 +97,8 @@ func (wh *WebSocketHandler) HandleConnections(w http.ResponseWriter, r *http.Req
 			if err != nil {
 				log.Printf("Error streaming transcript to python brain: %v", err)
 			}
+			
+			log.Printf("AI Concierge: %s", aiResponse)
 		}
 	}()
 
@@ -107,7 +113,12 @@ func (wh *WebSocketHandler) HandleConnections(w http.ResponseWriter, r *http.Req
 
 		if msg.Type == "audio_in" {
 			// Forward PCM bytes to Cartesia STT
-			stt.SendAudio([]byte(msg.Data))
+			decoded, err := base64.StdEncoding.DecodeString(msg.Data)
+			if err != nil {
+				log.Printf("Failed to decode audio base64: %v", err)
+				continue
+			}
+			stt.SendAudio(decoded)
 		}
 	}
 }

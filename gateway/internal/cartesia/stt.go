@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/url"
 
 	"github.com/gorilla/websocket"
 )
@@ -17,8 +18,15 @@ type STTClient struct {
 
 // NewSTTClient initializes a new Cartesia STT connection
 func NewSTTClient(apiKey string) (*STTClient, error) {
-	url := fmt.Sprintf("wss://api.cartesia.ai/v1/stt?api_key=%s", apiKey)
-	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	params := url.Values{}
+	params.Add("api_key", apiKey)
+	params.Add("cartesia_version", "2024-03-01")
+	params.Add("model", "ink-2")
+	params.Add("sample_rate", "16000")
+	params.Add("encoding", "pcm_s16le")
+
+	wsUrl := fmt.Sprintf("wss://api.cartesia.ai/stt/turns/websocket?%s", params.Encode())
+	conn, _, err := websocket.DefaultDialer.Dial(wsUrl, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Cartesia STT: %w", err)
 	}
@@ -46,13 +54,9 @@ func (c *STTClient) listen() {
 
 		var payload map[string]interface{}
 		if err := json.Unmarshal(message, &payload); err == nil {
-			// Extract final transcript
-			// Note: This payload structure depends on Cartesia's exact API
-			if typ, ok := payload["type"].(string); ok && typ == "transcript" {
-				if isFinal, ok := payload["is_final"].(bool); ok && isFinal {
-					if text, ok := payload["text"].(string); ok {
-						c.Transcript <- text
-					}
+			if typ, ok := payload["type"].(string); ok && typ == "turn.end" {
+				if text, ok := payload["transcript"].(string); ok && text != "" {
+					c.Transcript <- text
 				}
 			}
 		}
@@ -60,12 +64,8 @@ func (c *STTClient) listen() {
 }
 
 func (c *STTClient) SendAudio(pcmBytes []byte) error {
-	// Wrap PCM in Cartesia's expected JSON format or send binary if supported
-	// Example assuming JSON payload for audio chunks
-	payload := map[string]interface{}{
-		"audio": pcmBytes, // Usually needs base64 encoding, simplified here
-	}
-	return c.conn.WriteJSON(payload)
+	// Cartesia STT expects raw binary audio chunks
+	return c.conn.WriteMessage(websocket.BinaryMessage, pcmBytes)
 }
 
 func (c *STTClient) Close() {
