@@ -5,11 +5,20 @@ import (
 	"fmt"
 )
 
+type Booking struct {
+	ID        int    `json:"id"`
+	GuestName string `json:"guest_name"`
+	RoomType  string `json:"room_type"`
+	Nights    int    `json:"nights"`
+	Status    string `json:"status"`
+}
+
 type BookingRepository interface {
 	GetAvailableRooms(roomType string) (int, error)
 	CreateBooking(guestName, roomType string, nights int) (int64, error)
 	ConfirmBookingStatus(invoiceID string) error
 	GetTotalCapacity(roomType string) (int, error)
+	GetAllBookings() ([]Booking, error)
 }
 
 type SQLiteRepository struct {
@@ -110,4 +119,28 @@ func (r *SQLiteRepository) AssociateInvoice(bookingID int64, invoiceID string) e
 	`, invoiceID, bookingID)
 	
 	return err
+}
+
+// GetAllBookings retrieves all bookings ordered by ID descending
+func (r *SQLiteRepository) GetAllBookings() ([]Booking, error) {
+	rows, err := r.db.Query(`
+		SELECT id, guest_name, room_type, nights, status 
+		FROM bookings 
+		ORDER BY id DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var bookings []Booking
+	for rows.Next() {
+		var b Booking
+		if err := rows.Scan(&b.ID, &b.GuestName, &b.RoomType, &b.Nights, &b.Status); err != nil {
+			return nil, err
+		}
+		bookings = append(bookings, b)
+	}
+
+	return bookings, rows.Err()
 }

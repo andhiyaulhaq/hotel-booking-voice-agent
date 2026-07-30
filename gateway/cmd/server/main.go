@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -59,9 +60,10 @@ func main() {
 	// 6. Initialize WebSocket Handler
 	wsHandler := ws.NewWebSocketHandler(agentClient)
 
-	// 7. Start HTTP Server for WebSockets and Webhooks
+	// 7. Start HTTP Server for WebSockets, Webhooks, and API
 	http.HandleFunc("/ws", wsHandler.HandleConnections)
 	http.HandleFunc("/webhooks/xendit", payments.HandleWebhook(repo))
+	http.HandleFunc("/api/bookings", handleGetBookings(repo))
 	
 	go func() {
 		log.Println("HTTP Server listening on :8080 (WebSockets & Webhooks)")
@@ -76,4 +78,40 @@ func main() {
 	<-quit
 
 	log.Println("Shutting down Gateway gracefully...")
+}
+
+func handleGetBookings(repo db.BookingRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Enable CORS for the React frontend
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
+
+		// Handle preflight requests
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "GET")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		bookings, err := repo.GetAllBookings()
+		if err != nil {
+			log.Printf("Error fetching bookings: %v", err)
+			http.Error(w, "Failed to fetch bookings", http.StatusInternalServerError)
+			return
+		}
+
+		// If no bookings, return empty array instead of null
+		if bookings == nil {
+			bookings = []db.Booking{}
+		}
+
+		if err := json.NewEncoder(w).Encode(bookings); err != nil {
+			log.Printf("Error encoding bookings: %v", err)
+		}
+	}
 }

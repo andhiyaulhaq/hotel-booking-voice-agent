@@ -49,6 +49,13 @@ Built in **Python**, this stateless service powers the conversational intelligen
 - Redis Server (Running locally on default port `6379`)
 - Protoc (Protocol Buffers Compiler)
 
+### 0. Start the Redis Cache
+The system uses Redis for ultra-low latency state caching. A `docker-compose.yml` file is provided at the root of the project.
+```bash
+# From the root of the project
+docker compose up -d
+```
+
 ### 1. Start the Go Gateway
 ```bash
 cd gateway
