@@ -11,13 +11,14 @@ The system is split into two primary microservices that communicate synchronousl
 ### 1. Gateway Edge Service (`/gateway`)
 Built in **Go (Golang)**, this service acts as the high-throughput edge node facing the client. 
 - **WebSocket Streaming:** Handles real-time audio streams from users.
+- **REST API:** Serves data endpoints (e.g., `/api/bookings`) for the React Admin Dashboard.
 - **State Management:** Manages all persistent state via **SQLite** and implements a Cache-Aside pattern using **Redis** for lightning-fast room availability checks.
 - **Payments:** Integrates with the **Xendit** API for processing webhooks and managing booking payments.
 - **Performance:** Designed to be extremely low-latency, keeping the voice interactions feeling natural and responsive.
 
 ### 2. AI Brain (`/brain`)
 Built in **Python**, this stateless service powers the conversational intelligence and decision making.
-- **Agentic Reasoning:** Uses **LangChain** and **LangGraph** to process incoming transcripts, determine user intents, and execute function-calling tools.
+- **Agentic Reasoning:** Uses a **Custom LangGraph StateGraph** to process incoming transcripts, determine user intents deterministically, and execute function-calling tools.
 - **Retrieval-Augmented Generation (RAG):** Integrates **FAISS** to rapidly retrieve hotel policies, local tourism knowledge, and other unstructured data to answer guest questions contextually.
 - **Streaming Responses:** Streams AI responses chunk-by-chunk back to the Gateway via gRPC for immediate TTS (Text-to-Speech) processing.
 
@@ -32,10 +33,11 @@ Built in **Python**, this stateless service powers the conversational intelligen
 ---
 
 ## 🛠️ Tech Stack
-- **Languages:** Go 1.25, Python 3.12+
-- **AI/ML:** LangChain, LangGraph, FAISS
+- **Languages:** Go 1.25, Python 3.12+, TypeScript
+- **Frontend:** React, Vite
+- **AI/ML:** Custom LangGraph StateGraph, LangChain, FAISS
 - **Database:** SQLite
-- **Caching:** Redis (miniredis used for testing)
+- **Caching:** Redis (via Docker Compose)
 - **RPC Framework:** gRPC & Protocol Buffers
 - **Payments:** Xendit Go API
 
@@ -99,10 +101,10 @@ go test ./...
 
 ## 🗺️ Roadmap
 - [x] **Phase 1:** Core Data State (SQLite/Redis) & gRPC Contract
-- [ ] **Phase 2:** LangChain AI Integration & Voice Endpoints (Cartesia)
-- [ ] **Phase 3:** Multimodal UI Booking Portal & Admin Dashboard
+- [x] **Phase 2:** Custom LangGraph AI Integration & Voice Endpoints (Cartesia)
+- [x] **Phase 3:** Multimodal UI Booking Portal & Admin Dashboard
 
 ---
 
 ## 📝 License
-This project is proprietary and confidential.
+This project is an open-source prototype licensed under the MIT License.
