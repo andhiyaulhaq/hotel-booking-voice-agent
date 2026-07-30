@@ -71,7 +71,17 @@ uv pip install -r pyproject.toml # or equivalent
 python src/main.py
 ```
 
-### 3. Running Tests
+### 3. Start the Web UI (Frontend)
+```bash
+cd web
+# Install dependencies using pnpm
+pnpm install
+
+# Start the Vite development server (Port 5173)
+pnpm run dev
+```
+
+### 4. Running Tests
 The Gateway service includes comprehensive tests for database logic and cache management.
 ```bash
 cd gateway
