@@ -22,25 +22,23 @@ export function useAudioStream(onAudioData: (base64Audio: string) => void) {
       const source = audioContextRef.current.createMediaStreamSource(stream);
       source.connect(analyserRef.current);
 
-      // We use a ScriptProcessorNode to get raw PCM data (AudioWorklet is better for prod, but this is simpler for the demo)
-      const processor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
-      processor.onaudioprocess = (e) => {
+      // Load the AudioWorklet module
+      await audioContextRef.current.audioWorklet.addModule('/audio-processor.js');
+
+      // Create the AudioWorkletNode
+      const workletNode = new AudioWorkletNode(audioContextRef.current, 'audio-processor');
+
+      workletNode.port.onmessage = (event) => {
         // Software Mute: If the AI is currently speaking, ignore the microphone to prevent echo loops
         // This acts as a foolproof half-duplex echo cancellation.
         if (audioContextRef.current && nextPlayTimeRef.current > audioContextRef.current.currentTime) {
             return;
         }
 
-        const inputData = e.inputBuffer.getChannelData(0);
-        
-        // Convert Float32 to Int16 PCM
-        const pcm16 = new Int16Array(inputData.length);
-        for (let i = 0; i < inputData.length; i++) {
-          pcm16[i] = Math.max(-1, Math.min(1, inputData[i])) * 32767;
-        }
+        const buffer = event.data;
         
         // Base64 encode the binary data
-        const bytes = new Uint8Array(pcm16.buffer);
+        const bytes = new Uint8Array(buffer);
         let binary = '';
         for (let i = 0; i < bytes.byteLength; i++) {
             binary += String.fromCharCode(bytes[i]);
@@ -60,14 +58,13 @@ export function useAudioStream(onAudioData: (base64Audio: string) => void) {
         }
       };
 
-      source.connect(processor);
-      // Removed: processor.connect(audioContextRef.current.destination);
+      source.connect(workletNode);
       // We don't want the user's mic to play back into their own earphones (sidetone)!
-      // The ScriptProcessorNode still fires onaudioprocess even if not connected to destination in most browsers,
+      // The AudioWorkletNode still fires process() even if not connected to destination in most browsers,
       // but to be safe we can connect it to a dummy gain node with 0 volume.
       const dummyGain = audioContextRef.current.createGain();
       dummyGain.gain.value = 0;
-      processor.connect(dummyGain);
+      workletNode.connect(dummyGain);
       dummyGain.connect(audioContextRef.current.destination);
       
       setIsRecording(true);
