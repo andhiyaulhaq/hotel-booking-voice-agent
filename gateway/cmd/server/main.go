@@ -64,6 +64,7 @@ func main() {
 	http.HandleFunc("/ws", wsHandler.HandleConnections)
 	http.HandleFunc("/webhooks/xendit", payments.HandleWebhook(repo))
 	http.HandleFunc("/api/bookings", handleGetBookings(repo))
+	http.HandleFunc("/api/inventory", handleGetInventory(repo))
 	
 	go func() {
 		log.Println("HTTP Server listening on :8080 (WebSockets & Webhooks)")
@@ -112,6 +113,57 @@ func handleGetBookings(repo db.BookingRepository) http.HandlerFunc {
 
 		if err := json.NewEncoder(w).Encode(bookings); err != nil {
 			log.Printf("Error encoding bookings: %v", err)
+		}
+	}
+}
+
+type RoomInventory struct {
+	RoomType  string `json:"room_type"`
+	Available int    `json:"available"`
+	Total     int    `json:"total"`
+}
+
+func handleGetInventory(repo db.BookingRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
+
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "GET")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		roomTypes := []string{"standard", "deluxe", "suite"}
+		var inventory []RoomInventory
+
+		for _, rt := range roomTypes {
+			available, err := cache.GetAvailableRooms(repo, rt)
+			if err != nil {
+				log.Printf("Error getting availability for %s: %v", rt, err)
+				available = 0
+			}
+
+			total, err := repo.GetTotalCapacity(rt)
+			if err != nil {
+				log.Printf("Error getting total capacity for %s: %v", rt, err)
+				total = 0
+			}
+
+			inventory = append(inventory, RoomInventory{
+				RoomType:  rt,
+				Available: available,
+				Total:     total,
+			})
+		}
+
+		if err := json.NewEncoder(w).Encode(inventory); err != nil {
+			log.Printf("Error encoding inventory: %v", err)
 		}
 	}
 }
