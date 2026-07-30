@@ -1,5 +1,8 @@
+from typing import Literal
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
+from langchain_core.messages import SystemMessage
+from langgraph.graph import StateGraph, START, END, MessagesState
+from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import InMemorySaver
 from tools import TOOLS
 import os
@@ -39,14 +42,42 @@ def create_concierge_agent():
     )
     
     # Bind the LLM with our gRPC and RAG tools
+    llm_with_tools = llm.bind_tools(TOOLS)
+    
+    # Define the assistant node
+    def assistant(state: MessagesState):
+        messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
+        response = llm_with_tools.invoke(messages)
+        return {"messages": [response]}
+        
+    # Define the routing logic
+    def should_continue(state: MessagesState) -> Literal["tools", "__end__"]:
+        messages = state["messages"]
+        last_message = messages[-1]
+        
+        # If the LLM makes a tool call, route to the tools node
+        if last_message.tool_calls:
+            return "tools"
+            
+        # Otherwise, we are done
+        return END
+
+    # Create the graph
+    workflow = StateGraph(MessagesState)
+    
+    # Add nodes
+    workflow.add_node("assistant", assistant)
+    workflow.add_node("tools", ToolNode(TOOLS))
+    
+    # Define edges
+    workflow.add_edge(START, "assistant")
+    workflow.add_conditional_edges("assistant", should_continue)
+    workflow.add_edge("tools", "assistant")
+    
     # We use InMemorySaver to remember the conversation context per session/thread
     memory = InMemorySaver()
     
-    agent_executor = create_react_agent(
-        model=llm,
-        tools=TOOLS,
-        checkpointer=memory,
-        prompt=SYSTEM_PROMPT
-    )
+    # Compile the graph
+    agent_executor = workflow.compile(checkpointer=memory)
     
     return agent_executor
