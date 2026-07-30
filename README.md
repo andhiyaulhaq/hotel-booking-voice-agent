@@ -103,6 +103,7 @@ go test ./...
 - [x] **Phase 1:** Core Data State (SQLite/Redis) & gRPC Contract
 - [x] **Phase 2:** Custom LangGraph AI Integration & Voice Endpoints (Cartesia)
 - [x] **Phase 3:** Multimodal UI Booking Portal & Admin Dashboard
+- [ ] **Phase 4:** Supabase Integration for scalable cloud database & Auth
 
 ---
 
