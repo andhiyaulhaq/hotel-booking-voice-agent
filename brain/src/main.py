@@ -39,7 +39,11 @@ class AgentServiceServicer(service_pb2_grpc.AgentServiceServicer):
             )
             
             for message, metadata in stream:
-                if hasattr(message, 'content') and isinstance(message.content, str) and message.content:
+                # We ONLY want to stream the AI's actual spoken response.
+                # We must ignore ToolMessages (like raw FAISS markdown) or HumanMessages.
+                from langchain_core.messages import AIMessageChunk
+                
+                if isinstance(message, AIMessageChunk) and message.content:
                     # Stream text chunks back to Go
                     yield service_pb2.AgentResponse(
                         text_chunk=message.content,
