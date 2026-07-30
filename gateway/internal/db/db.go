@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"log"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 )
 
 var DB *sql.DB
 
 func InitDB(dbPath string) error {
 	var err error
-	DB, err = sql.Open("sqlite3", dbPath)
+	DB, err = sql.Open("postgres", dbPath)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
@@ -36,14 +36,14 @@ func InitDB(dbPath string) error {
 func createSchema() error {
 	schema := `
 	CREATE TABLE IF NOT EXISTS rooms (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id SERIAL PRIMARY KEY,
 		room_type TEXT UNIQUE NOT NULL,
 		total_capacity INTEGER NOT NULL,
 		price_per_night INTEGER NOT NULL
 	);
 
 	CREATE TABLE IF NOT EXISTS bookings (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id SERIAL PRIMARY KEY,
 		guest_name TEXT NOT NULL,
 		room_type TEXT NOT NULL,
 		nights INTEGER NOT NULL,

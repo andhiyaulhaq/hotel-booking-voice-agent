@@ -48,15 +48,27 @@ Built in **Python**, this stateless service powers the conversational intelligen
 ### Prerequisites
 - Go 1.25+
 - Python 3.12+ (or `uv` package manager)
-- Redis Server (Running locally on default port `6379`)
+- Docker & Docker Compose
 - Protoc (Protocol Buffers Compiler)
 
-### 0. Start the Redis Cache
-The system uses Redis for ultra-low latency state caching. A `docker-compose.yml` file is provided at the root of the project.
+### 0. Start the Database & Cache (Docker Compose)
+The system uses PostgreSQL for persistence and Redis for ultra-low latency state caching. A `docker-compose.yml` file is provided at the root of the project.
+
+Before running Docker Compose, you can define your secure credentials by creating a `.env` file in the root directory:
+```env
+POSTGRES_USER=my_secure_user
+POSTGRES_PASSWORD=my_super_secret_password
+POSTGRES_DB=hotel_production_db
+```
+Then, spin up the infrastructure:
 ```bash
-# From the root of the project
 docker compose up -d
 ```
+
+> [!WARNING]
+> **Troubleshooting Database Authentication**
+> If you start the Postgres container *before* creating the `.env` file, Docker will initialize the database volume with the default credentials (`hotel_user`). If you later add the `.env` file and try to connect, you will get a `password authentication failed` error. 
+> To fix this, you must wipe the old volume: `docker compose down -v` and then run `docker compose up -d` again.
 
 ### 1. Start the Go Gateway
 ```bash

@@ -24,8 +24,12 @@ func main() {
 
 	log.Println("Starting Hotel Voice Agent Gateway...")
 
-	// 1. Initialize SQLite Database
-	if err := db.InitDB("hotel.db"); err != nil {
+	// 1. Initialize PostgreSQL Database
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		dbURL = "postgres://hotel_user:hotel_password@localhost:5432/hotel_db?sslmode=disable"
+	}
+	if err := db.InitDB(dbURL); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.DB.Close()

@@ -11,5 +11,19 @@ services:
     command: redis-server --appendonly yes
     restart: always
 
+  postgres:
+    image: postgres:15-alpine
+    container_name: hotel_voice_agent_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hotel_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hotel_password}
+      POSTGRES_DB: ${POSTGRES_DB:-hotel_db}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
 volumes:
   redis_data:
+  postgres_data:

@@ -32,7 +32,7 @@ func NewSQLiteRepository(db *sql.DB) *SQLiteRepository {
 // GetTotalCapacity gets the maximum capacity for a specific room type
 func (r *SQLiteRepository) GetTotalCapacity(roomType string) (int, error) {
 	var total int
-	err := r.db.QueryRow("SELECT total_capacity FROM rooms WHERE room_type = ?", roomType).Scan(&total)
+	err := r.db.QueryRow("SELECT total_capacity FROM rooms WHERE room_type = $1", roomType).Scan(&total)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, fmt.Errorf("room type %s not found", roomType)
@@ -53,7 +53,7 @@ func (r *SQLiteRepository) GetAvailableRooms(roomType string) (int, error) {
 	// We count both confirmed and pending_payment as occupying a room temporarily to avoid double booking
 	err = r.db.QueryRow(`
 		SELECT COUNT(*) FROM bookings 
-		WHERE room_type = ? AND status IN ('confirmed', 'pending_payment')
+		WHERE room_type = $1 AND status IN ('confirmed', 'pending_payment')
 	`, roomType).Scan(&booked)
 	
 	if err != nil && err != sql.ErrNoRows {
@@ -80,23 +80,24 @@ func (r *SQLiteRepository) CreateBooking(guestName, roomType string, nights int)
 		return 0, fmt.Errorf("no available rooms of type %s", roomType)
 	}
 
-	result, err := r.db.Exec(`
+	var newID int64
+	err = r.db.QueryRow(`
 		INSERT INTO bookings (guest_name, room_type, nights, status) 
-		VALUES (?, ?, ?, 'pending_payment')
-	`, guestName, roomType, nights)
+		VALUES ($1, $2, $3, 'pending_payment') RETURNING id
+	`, guestName, roomType, nights).Scan(&newID)
 	
 	if err != nil {
 		return 0, err
 	}
 	
-	return result.LastInsertId()
+	return newID, nil
 }
 
 // ConfirmBookingStatus updates the booking status when Xendit confirms payment
 func (r *SQLiteRepository) ConfirmBookingStatus(invoiceID string) error {
 	result, err := r.db.Exec(`
 		UPDATE bookings SET status = 'confirmed' 
-		WHERE xendit_invoice_id = ?
+		WHERE xendit_invoice_id = $1
 	`, invoiceID)
 	
 	if err != nil {
@@ -114,8 +115,8 @@ func (r *SQLiteRepository) ConfirmBookingStatus(invoiceID string) error {
 // AssociateInvoice associates a generated Xendit invoice ID with a booking
 func (r *SQLiteRepository) AssociateInvoice(bookingID int64, invoiceID string) error {
 	_, err := r.db.Exec(`
-		UPDATE bookings SET xendit_invoice_id = ? 
-		WHERE id = ?
+		UPDATE bookings SET xendit_invoice_id = $1 
+		WHERE id = $2
 	`, invoiceID, bookingID)
 	
 	return err
